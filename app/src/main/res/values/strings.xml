@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">SEDemo</string>
+    <string name="text_command_apdu">command APDU:</string>
+    <string name="button_send">Send</string>
+    <string name="permission_description">this is a custom permission, named SEDEMO</string>
+    <string name="button_clear">Clear</string>
+    <string name="button_showatr" translatable="false">Show ATR</string>
+    <string name="button_get_eid" translatable="false">Get EID</string>
+    <string name="button_get_profiles" translatable="false">Get Profiles</string>
+</resources>

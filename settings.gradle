@@ -1,0 +1,2 @@
+rootProject.name='SEDemo'
+include ':app'
