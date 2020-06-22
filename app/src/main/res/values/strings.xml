@@ -7,4 +7,6 @@
     <string name="button_showatr" translatable="false">Show ATR</string>
     <string name="button_get_eid" translatable="false">Get EID</string>
     <string name="button_get_profiles" translatable="false">Get Profiles</string>
+    <string name="servicedesc" translatable="false">sedemo</string>
+    <string name="aiddescription" translatable="false">sedemo AID</string>
 </resources>

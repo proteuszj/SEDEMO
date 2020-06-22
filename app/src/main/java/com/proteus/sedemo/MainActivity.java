@@ -1,8 +1,13 @@
 package com.proteus.sedemo;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.nfc.NdefMessage;
+import android.nfc.NfcAdapter;
+import android.nfc.tech.NfcA;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -31,8 +36,7 @@ public class MainActivity extends AppCompatActivity implements SEService.CallBac
     private static final int COLOR_SEND = 0xFF0033AA;
     private static final int COLOR_RECV = Color.BLUE;
 
-
-    private static final String aidHex = "A0 00 00 05 59 10 10 FF FF FF FF 89 00 00 01 00";
+    private static final String aidHex = "A0000005591010FFFFFFFF8900000100";
     private static final String getEID = "80E2910006BF3E035C015A";
     private static final String getProfiles = "80E2910003BF2D00";
     private final Object obj_se = new Object();
@@ -55,6 +59,64 @@ public class MainActivity extends AppCompatActivity implements SEService.CallBac
         logLayout = findViewById(R.id.linearLayout);
         synchronized (obj_se) {
             new SEService(this, this);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
+            Parcelable[] rawMessage = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
+            if (null != rawMessage) {
+                Log.d(TAG, String.format("onNewIntent: %d messages", rawMessage.length));
+                for (Parcelable message : rawMessage ) Log.d(TAG, "onNewIntent: " + message.toString());
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (MY_PERMISSIONS_REQUEST == requestCode) {
+            if (grantResults.length == 1 && permissions.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "onRequestPermissionsResult: " + permissions[0] + " granted by user");
+            } else {
+                Log.d(TAG, "onRequestPermissionsResult: " + permissions[0] + " denied by user");
+            }
+        }
+    }
+
+    @Override
+    public void serviceConnected(SEService seService) {
+        Log.d(TAG, "serviceConnected: connected");
+        synchronized (obj_se) {
+            if (null != seService && seService.isConnected()) {
+                this.seService = seService;
+                Log.d(TAG, "serviceConnected: " + String.format("readers: %d", seService.getReaders().length));
+                if (seService.getReaders().length > 0) {
+                    for (int i = 0; i < seService.getReaders().length; i++)
+                        Log.d(TAG, "serviceConnected: " + seService.getReaders()[i].getName());
+                }
+                Reader readerSIM = seService.getReaders()[0];
+                if (readerSIM.isSecureElementPresent()) {
+                    Log.d(TAG, "serviceConnected: " + readerSIM.getName() + " is present");
+                    try {
+                        session = readerSIM.openSession();
+                        channel = session.openLogicalChannel(new ByteArray(aidHex).data());
+                        Log("AID: \t", COLOR_SEND, aidHex);
+                        Log.d(TAG, "serviceConnected: " + (channel.isClosed() ? "closed" : "open"));
+                        if (!channel.isClosed()) {
+                            Log.d(TAG, "serviceConnected: " + (channel.isBasicChannel() ? "basic" : "other channel"));
+                            byte[] response = channel.getSelectResponse();
+                            Log("recv: ", COLOR_RECV, new ByteArray(response).toString());
+                            Log.d(TAG, "serviceConnected: " + new ByteArray(response).toString());
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            obj_se.notifyAll();
         }
     }
 
@@ -136,52 +198,6 @@ public class MainActivity extends AppCompatActivity implements SEService.CallBac
             }
         }
         return "FFFF";
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (MY_PERMISSIONS_REQUEST == requestCode) {
-            if (grantResults.length == 1 && permissions.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "onRequestPermissionsResult: " + permissions[0] + " granted by user");
-            } else {
-                Log.d(TAG, "onRequestPermissionsResult: " + permissions[0] + " denied by user");
-            }
-        }
-    }
-
-    @Override
-    public void serviceConnected(SEService seService) {
-        Log.d(TAG, "serviceConnected: connected");
-        synchronized (obj_se) {
-            if (null != seService && seService.isConnected()) {
-                this.seService = seService;
-                Log.d(TAG, "serviceConnected: " + String.format("readers: %d", seService.getReaders().length));
-                if (seService.getReaders().length > 0) {
-                    for (int i = 0; i < seService.getReaders().length; i++)
-                        Log.d(TAG, "serviceConnected: " + seService.getReaders()[i].getName());
-                }
-                Reader readerSIM = seService.getReaders()[0];
-                if (readerSIM.isSecureElementPresent()) {
-                    Log.d(TAG, "serviceConnected: " + readerSIM.getName() + " is present");
-                    try {
-                        session = readerSIM.openSession();
-                        channel = session.openLogicalChannel(new ByteArray(aidHex).data());
-                        Log("AID: \t", COLOR_SEND, aidHex);
-                        Log.d(TAG, "serviceConnected: " + (channel.isClosed() ? "closed" : "open"));
-                        if (!channel.isClosed()) {
-                            Log.d(TAG, "serviceConnected: " + (channel.isBasicChannel() ? "basic" : "other channel"));
-                            byte[] response = channel.getSelectResponse();
-                            Log("recv: ", COLOR_RECV, new ByteArray(response).toString());
-                            Log.d(TAG, "serviceConnected: " + new ByteArray(response).toString());
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            obj_se.notifyAll();
-        }
     }
 
 }
