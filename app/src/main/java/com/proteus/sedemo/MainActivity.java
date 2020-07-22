@@ -3,9 +3,7 @@ package com.proteus.sedemo;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.nfc.NdefMessage;
 import android.nfc.NfcAdapter;
-import android.nfc.tech.NfcA;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -16,10 +14,12 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.proteus.utils.ByteArray;
 
 import org.simalliance.openmobileapi.Channel;
+import org.simalliance.openmobileapi.PKCS15Provider;
 import org.simalliance.openmobileapi.Reader;
 import org.simalliance.openmobileapi.SEService;
 import org.simalliance.openmobileapi.Session;
@@ -63,13 +63,21 @@ public class MainActivity extends AppCompatActivity implements SEService.CallBac
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Toast.makeText(this, String.format("version: %s", seService.getVersion()), Toast.LENGTH_SHORT).show();
+        seService.shutdown();
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
             Parcelable[] rawMessage = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
             if (null != rawMessage) {
                 Log.d(TAG, String.format("onNewIntent: %d messages", rawMessage.length));
-                for (Parcelable message : rawMessage ) Log.d(TAG, "onNewIntent: " + message.toString());
+                for (Parcelable message : rawMessage)
+                    Log.d(TAG, "onNewIntent: " + message.toString());
             }
         }
     }
